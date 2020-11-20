@@ -20,31 +20,37 @@
 #ifndef _TYPES_WORKER_H
 #define _TYPES_WORKER_H
 
-struct worker {
-	pthread_t         thread;
-	int               id;
-	int               fd;
-	struct ev_async   ev_async;
-	struct ev_loop   *ev_base;
-	struct ev_timer   ev_monitor;
+struct worker
+{
+	pthread_t thread;
+	int id;
+	int fd;
+	struct ev_async ev_async;
+	struct ev_loop *ev_base;
+	struct ev_timer ev_monitor;
 
-	struct list       engines;
+	struct list engines;
 
-	unsigned int      nbclients;
-	struct list       clients;
+	unsigned int nbclients;
+	struct list clients;
 
-	struct list       frames;
-	unsigned int      nbframes;
+	struct list frames;
+	unsigned int nbframes;
 
 #ifdef HAVE_LIBCURL
-	struct curl_data  curl;
+	struct curl_data curl;
 #endif
+
+	/* 
+	TODO: Insert here the modsecurity struct that will be used for each worker
+	*/
 };
 
-struct worker_signal {
+struct worker_signal
+{
 	struct ev_signal signal;
-	int              signum;
-	void             (*func)(struct ev_loop *, struct ev_signal *, int);
+	int signum;
+	void (*func)(struct ev_loop *, struct ev_signal *, int);
 };
 
 #endif /* _TYPES_WORKER_H */

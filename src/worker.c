@@ -19,7 +19,6 @@
  */
 #include "include.h"
 
-
 /***
  * NAME
  *   worker_async_cb -
@@ -44,7 +43,6 @@ static void worker_async_cb(struct ev_loop *loop __maybe_unused, struct ev_async
 #endif
 }
 
-
 /***
  * NAME
  *   worker_async_init -
@@ -66,7 +64,6 @@ static void worker_async_init(struct worker *worker)
 	ev_async_start(worker->ev_base, &(worker->ev_async));
 }
 
-
 /***
  * NAME
  *   bind_server_socket -
@@ -82,7 +79,7 @@ static void worker_async_init(struct worker *worker)
  */
 static int bind_server_socket(struct addrinfo *ai)
 {
-	int    retval, yes = 1;
+	int retval, yes = 1;
 	bool_t flag_ok = 0;
 
 	DBG_FUNC(NULL, "%p", ai);
@@ -111,7 +108,6 @@ static int bind_server_socket(struct addrinfo *ai)
 	return retval;
 }
 
-
 /***
  * NAME
  *   create_server_socket -
@@ -128,24 +124,28 @@ static int bind_server_socket(struct addrinfo *ai)
 static int create_server_socket(void)
 {
 	static const struct addrinfo hints =
-	{
-		.ai_flags    = AI_PASSIVE | AI_CANONNAME, /* Set the official name of the host */
-		.ai_family   = AF_UNSPEC,                 /* Allow IPv4 or IPv6 */
-		.ai_socktype = SOCK_STREAM,               /* Use connection-based protocol (TCP) */
-		.ai_protocol = 0                          /* Any protocol */
-	};
-	char             servname[16];
+		{
+			.ai_flags = AI_PASSIVE | AI_CANONNAME, /* Set the official name of the host */
+			.ai_family = AF_UNSPEC,				   /* Allow IPv4 or IPv6 */
+			.ai_socktype = SOCK_STREAM,			   /* Use connection-based protocol (TCP) */
+			.ai_protocol = 0					   /* Any protocol */
+		};
+	char servname[16];
 	struct addrinfo *res = NULL, *ai;
-	int              rc, retval = FUNC_RET_ERROR;
+	int rc, retval = FUNC_RET_ERROR;
 
 	DBG_FUNC(NULL, "");
 
 	(void)snprintf(servname, sizeof(servname), "%d", cfg.server_port);
 
-	if (_nOK(rc = getaddrinfo(cfg.server_address, servname, &hints, &res))) {
+	if (_nOK(rc = getaddrinfo(cfg.server_address, servname, &hints, &res)))
+	{
 		w_log(NULL, _E("Failed to get address info for '%s': %s"), cfg.server_address, gai_strerror(rc));
-	} else {
-		for (ai = res; _nNULL(ai); ai = ai->ai_next) {
+	}
+	else
+	{
+		for (ai = res; _nNULL(ai); ai = ai->ai_next)
+		{
 			W_DBG(INFO, NULL, (ai == res) ? "  --- addrinfo: %p" : "  ---", ai);
 			W_DBG(INFO, NULL, "    ai_flags:     %d", ai->ai_flags);
 			W_DBG(INFO, NULL, "    ai_family:    %d", ai->ai_family);
@@ -174,7 +174,6 @@ static int create_server_socket(void)
 	return retval;
 }
 
-
 /***
  * NAME
  *   worker_thread_monitor_cb -
@@ -199,10 +198,9 @@ static void worker_thread_monitor_cb(struct ev_loop *loop __maybe_unused, struct
 
 	if (w->nbclients || ev_async_pending(&(w->ev_async)))
 		W_DBG(WORKER, w, "  %u clients connected (%u frames), async event %spending",
-		      w->nbclients, w->nbframes, ev_async_pending(&(w->ev_async)) ? "" : "not ");
+			  w->nbclients, w->nbframes, ev_async_pending(&(w->ev_async)) ? "" : "not ");
 #endif
 }
-
 
 /***
  * NAME
@@ -224,7 +222,8 @@ __noreturn static void *worker_thread_exit(struct worker *worker)
 	if (ev_is_active(&(worker->ev_monitor)) || ev_is_pending(&(worker->ev_monitor)))
 		ev_timer_stop(worker->ev_base, &(worker->ev_monitor));
 
-	if (_nNULL(worker->ev_base) && !ev_is_default_loop(worker->ev_base)) {
+	if (_nNULL(worker->ev_base) && !ev_is_default_loop(worker->ev_base))
+	{
 		ev_loop_destroy(worker->ev_base);
 
 		worker->ev_base = NULL;
@@ -234,7 +233,6 @@ __noreturn static void *worker_thread_exit(struct worker *worker)
 
 	pthread_exit(NULL);
 }
-
 
 /***
  * NAME
@@ -251,17 +249,17 @@ __noreturn static void *worker_thread_exit(struct worker *worker)
  */
 static void *worker_thread(void *data)
 {
-	char               name[16];
-	struct client     *c, *cback;
+	char name[16];
+	struct client *c, *cback;
 	struct spoe_frame *f, *fback;
-	struct worker     *w = data;
+	struct worker *w = data;
 
 	DBG_FUNC(w, "%p", data);
 
 #ifdef __linux__
-	W_DBG(WORKER, w, "  Worker started, thread id: %"PRI_PTHREADT, syscall(SYS_gettid));
+	W_DBG(WORKER, w, "  Worker started, thread id: %" PRI_PTHREADT, syscall(SYS_gettid));
 #else
-	W_DBG(WORKER, w, "  Worker started, thread id: %"PRI_PTHREADT, pthread_self());
+	W_DBG(WORKER, w, "  Worker started, thread id: %" PRI_PTHREADT, pthread_self());
 #endif
 
 	/* Can w->thread be used instead of the function pthread_self()? */
@@ -274,7 +272,8 @@ static void *worker_thread(void *data)
 	LIST_INIT(&(w->frames));
 
 	w->ev_base = ev_loop_new(cfg.ev_backend);
-	if (_NULL(w->ev_base)) {
+	if (_NULL(w->ev_base))
+	{
 		w_log(w, _F("Failed to initialize libev for worker %02d: %m"), w->id);
 
 		return worker_thread_exit(w);
@@ -284,6 +283,7 @@ static void *worker_thread(void *data)
 
 	worker_async_init(w);
 
+	/* TODO: Change this to initialize the Modsecurity thing
 #ifdef HAVE_LIBCURL
 	if (_nNULL(cfg.mir_url) && _ERROR(mir_curl_init(w->ev_base, &(w->ev_async), &(w->curl)))) {
 		w_log(w, _E("Failed to initialize cURL mirroring"));
@@ -291,7 +291,7 @@ static void *worker_thread(void *data)
 		return worker_thread_exit(w);
 	}
 #endif
-
+*/
 	ev_timer_init(&(w->ev_monitor), worker_thread_monitor_cb, cfg.monitor_interval_us / 1e6, cfg.monitor_interval_us / 1e6);
 	ev_timer_start(w->ev_base, &(w->ev_monitor));
 
@@ -302,14 +302,14 @@ static void *worker_thread(void *data)
 	list_for_each_entry_safe(c, cback, &(w->clients), by_worker)
 		release_client(c);
 
-	list_for_each_entry_safe(f, fback, &(w->frames), list) {
+	list_for_each_entry_safe(f, fback, &(w->frames), list)
+	{
 		LIST_DEL(&(f->list));
 		free(f);
 	}
 
 	return worker_thread_exit(w);
 }
-
 
 /***
  * NAME
@@ -332,7 +332,6 @@ static void worker_stop_ev(int revents __maybe_unused, void *base)
 	ev_break(base, EVBREAK_ONE);
 }
 
-
 /***
  * NAME
  *   worker_stop -
@@ -350,7 +349,7 @@ static void worker_stop_ev(int revents __maybe_unused, void *base)
 static void worker_stop(struct ev_loop *loop, const char *msg __maybe_unused)
 {
 	static bool_t flag_stop = 0;
-	int           i;
+	int i;
 
 	DBG_FUNC(NULL, "%p, \"%s\"", loop, msg);
 
@@ -361,7 +360,8 @@ static void worker_stop(struct ev_loop *loop, const char *msg __maybe_unused)
 	 * that the program receives a SIGINT signal.  To disable this, the
 	 * variable flag_stop is used.
 	 */
-	if (flag_stop) {
+	if (flag_stop)
+	{
 		W_DBG(WORKER, NULL, "  Server stopping already in progress, canceled: %s", msg);
 
 		return;
@@ -375,14 +375,14 @@ static void worker_stop(struct ev_loop *loop, const char *msg __maybe_unused)
 
 	W_DBG(WORKER, NULL, "  Main event loop stopped");
 
-	for (i = 0; i < cfg.num_workers; i++) {
+	for (i = 0; i < cfg.num_workers; i++)
+	{
 		ev_once(prg.workers[i].ev_base, -1, 0, 0, worker_stop_ev, prg.workers[i].ev_base);
 		ev_async_send(prg.workers[i].ev_base, &(prg.workers[i].ev_async));
 
 		W_DBG(WORKER, NULL, "  Worker %02d: event loop stopped", prg.workers[i].id);
 	}
 }
-
 
 /***
  * NAME
@@ -401,7 +401,7 @@ static void worker_stop(struct ev_loop *loop, const char *msg __maybe_unused)
  */
 static void worker_signal_stop_cb(struct ev_loop *loop, struct ev_signal *ev, int revents __maybe_unused)
 {
-	char        buffer[BUFSIZ];
+	char buffer[BUFSIZ];
 	const char *sig_name;
 
 	DBG_FUNC(NULL, "%p, %p, 0x%08x", loop, ev, revents);
@@ -412,7 +412,6 @@ static void worker_signal_stop_cb(struct ev_loop *loop, struct ev_signal *ev, in
 
 	worker_stop(loop, buffer);
 }
-
 
 /***
  * NAME
@@ -441,9 +440,6 @@ static void worker_signal_ignore_cb(struct ev_loop *loop __maybe_unused, struct 
 	W_DBG(WORKER, NULL, "signal ignored - %s received (%d)", sig_name, ev->signum);
 }
 
-
-
-
 /***
  * NAME
  *   worker_runtime_cb -
@@ -466,7 +462,6 @@ static void worker_runtime_cb(struct ev_loop *loop __maybe_unused, struct ev_tim
 	worker_stop(loop, "runtime exceeded");
 }
 
-
 /***
  * NAME
  *   worker_accept_cb -
@@ -486,14 +481,15 @@ static void worker_accept_cb(struct ev_loop *loop __maybe_unused, struct ev_io *
 {
 	struct worker *w;
 	struct client *c;
-	int            fd;
+	int fd;
 
 	w = prg.workers + (prg.clicount++ % cfg.num_workers);
 
 	DBG_FUNC(w, "%p, %p, 0x%08x", loop, ev, revents);
 
 	fd = accept(w->fd, NULL, NULL);
-	if (_ERROR(fd)) {
+	if (_ERROR(fd))
+	{
 		if ((errno != EAGAIN) && (errno != EWOULDBLOCK))
 			w_log(w, _E("Failed to accept client connection: %m"));
 
@@ -501,16 +497,18 @@ static void worker_accept_cb(struct ev_loop *loop __maybe_unused, struct ev_io *
 	}
 
 	W_DBG(WORKER, NULL,
-	      "  <%lu> New client connection accepted and assigned to worker %02d",
-	      prg.clicount, w->id);
+		  "  <%lu> New client connection accepted and assigned to worker %02d",
+		  prg.clicount, w->id);
 
-	if (_ERROR(socket_set_nonblocking(fd))) {
+	if (_ERROR(socket_set_nonblocking(fd)))
+	{
 		w_log(NULL, _E("Failed to set client socket to non-blocking: %m"));
 		(void)close(fd);
 
 		return;
 	}
-	else if (_ERROR(socket_set_keepalive(fd, 1, -1, -1, -1))) {
+	else if (_ERROR(socket_set_keepalive(fd, 1, -1, -1, -1)))
+	{
 		w_log(NULL, _E("Failed to set KEEPALIVE on server socket: %m"));
 		(void)close(fd);
 
@@ -518,19 +516,20 @@ static void worker_accept_cb(struct ev_loop *loop __maybe_unused, struct ev_io *
 	}
 
 	c = calloc(1, sizeof(*c));
-	if (_NULL(c)) {
+	if (_NULL(c))
+	{
 		w_log(w, _E("Failed to allocate memory for client state: %m"));
 		(void)close(fd);
 
 		return;
 	}
 
-	c->fd             = fd;
-	c->id             = prg.clicount;
-	c->state          = SPOA_ST_CONNECTING;
+	c->fd = fd;
+	c->id = prg.clicount;
+	c->state = SPOA_ST_CONNECTING;
 	c->max_frame_size = cfg.max_frame_size;
-	c->status_code    = SPOE_FRM_ERR_NONE;
-	c->worker         = w;
+	c->status_code = SPOE_FRM_ERR_NONE;
+	c->worker = w;
 
 	LIST_INIT(&(c->processing_frames));
 	LIST_INIT(&(c->outgoing_frames));
@@ -545,7 +544,6 @@ static void worker_accept_cb(struct ev_loop *loop __maybe_unused, struct ev_io *
 
 	W_DBG(WORKER, NULL, "  <%lu> New read event added to worker %02d", prg.clicount, w->id);
 }
-
 
 /***
  * NAME
@@ -587,7 +585,6 @@ static int worker_run_exit(int fd, struct ev_loop *ev_base, struct worker_signal
 	return retval;
 }
 
-
 /***
  * NAME
  *   worker_run -
@@ -604,21 +601,22 @@ static int worker_run_exit(int fd, struct ev_loop *ev_base, struct worker_signal
 int worker_run(void)
 {
 	struct worker_signal ev_signals[] = {
-		{ .signum =  SIGHUP, .func = worker_signal_stop_cb   },
-		{ .signum =  SIGINT, .func = worker_signal_stop_cb   },
-		{ .signum = SIGPIPE, .func = worker_signal_ignore_cb },
-		{ .signum = SIGTERM, .func = worker_signal_stop_cb   },
-		{ .signum = SIGUSR1, .func = worker_signal_stop_cb   },
-		{ .signum = SIGUSR2, .func = worker_signal_ignore_cb },
+		{.signum = SIGHUP, .func = worker_signal_stop_cb},
+		{.signum = SIGINT, .func = worker_signal_stop_cb},
+		{.signum = SIGPIPE, .func = worker_signal_ignore_cb},
+		{.signum = SIGTERM, .func = worker_signal_stop_cb},
+		{.signum = SIGUSR1, .func = worker_signal_stop_cb},
+		{.signum = SIGUSR2, .func = worker_signal_ignore_cb},
 	};
-	struct ev_timer  ev_runtime;
-	struct ev_loop  *ev_base;
-	struct ev_io     ev_accept;
-	int              rc, i, fd = -1;
+	struct ev_timer ev_runtime;
+	struct ev_loop *ev_base;
+	struct ev_io ev_accept;
+	int rc, i, fd = -1;
 
 	DBG_FUNC(NULL, "");
 
-	if (_ERROR(rlimit_setnofile())) {
+	if (_ERROR(rlimit_setnofile()))
+	{
 		w_log(NULL, _F("Failed to set file descriptors limit: %m"));
 
 		return EX_SOFTWARE;
@@ -629,7 +627,8 @@ int worker_run(void)
 	(void)memset(&ev_accept, 0, sizeof(ev_accept));
 
 	ev_base = ev_default_loop(cfg.ev_backend);
-	if (_NULL(ev_base)) {
+	if (_NULL(ev_base))
+	{
 		w_log(NULL, _F("Failed to initialize libev: %m"));
 
 		return EX_SOFTWARE;
@@ -638,26 +637,30 @@ int worker_run(void)
 	W_DBG(WORKER, NULL, "  libev: using backend '%s'", ev_backend_type(ev_base));
 
 	fd = create_server_socket();
-	if (_ERROR(fd)) {
+	if (_ERROR(fd))
+	{
 		w_log(NULL, _F("Failed to create server socket"));
 
 		return worker_run_exit(fd, ev_base, ev_signals, TABLESIZE(ev_signals), &ev_accept, EX_SOFTWARE);
 	}
 
-	if (_ERROR(socket_set_nonblocking(fd))) {
+	if (_ERROR(socket_set_nonblocking(fd)))
+	{
 		w_log(NULL, _F("Failed to set client socket to non-blocking: %m"));
 
 		return worker_run_exit(fd, ev_base, ev_signals, TABLESIZE(ev_signals), &ev_accept, EX_SOFTWARE);
 	}
 
 	prg.workers = calloc(cfg.num_workers, sizeof(*(prg.workers)));
-	if (_NULL(prg.workers)) {
+	if (_NULL(prg.workers))
+	{
 		w_log(NULL, _F("Failed to allocate memory for workers: %m"));
 
 		return worker_run_exit(fd, ev_base, ev_signals, TABLESIZE(ev_signals), &ev_accept, EX_SOFTWARE);
 	}
 
-	for (i = 0; i < cfg.num_workers; i++) {
+	for (i = 0; i < cfg.num_workers; i++)
+	{
 		struct worker *w = prg.workers + i;
 
 		w->id = i + 1;
@@ -670,28 +673,31 @@ int worker_run(void)
 	ev_io_init(&ev_accept, worker_accept_cb, fd, EV_READ);
 	ev_io_start(ev_base, &ev_accept);
 
-	for (i = 0; i < TABLESIZE(ev_signals); i++) {
+	for (i = 0; i < TABLESIZE(ev_signals); i++)
+	{
 		ev_signal_init(&(ev_signals[i].signal), ev_signals[i].func, ev_signals[i].signum);
 		ev_signal_start(ev_base, &(ev_signals[i].signal));
 	}
 
-	if (cfg.runtime_us > 0) {
+	if (cfg.runtime_us > 0)
+	{
 		ev_timer_init(&ev_runtime, worker_runtime_cb, cfg.runtime_us / 1e6, 0.0);
 		ev_timer_start(ev_base, &ev_runtime);
 	}
 
 	W_DBG(WORKER, NULL,
-	      "  Server is ready"
-	      " [" STR_CAP_FRAGMENTATION "=%s - " STR_CAP_PIPELINING "=%s - " STR_CAP_ASYNC "=%s - debug=%s - max-frame-size=%u]",
-	      STR_BOOL(cfg.cap_flags & FLAG_CAP_FRAGMENTATION),
-	      STR_BOOL(cfg.cap_flags & FLAG_CAP_PIPELINING),
-	      STR_BOOL(cfg.cap_flags & FLAG_CAP_ASYNC),
-	      STR_BOOL(cfg.debug_level),
-	      cfg.max_frame_size);
+		  "  Server is ready"
+		  " [" STR_CAP_FRAGMENTATION "=%s - " STR_CAP_PIPELINING "=%s - " STR_CAP_ASYNC "=%s - debug=%s - max-frame-size=%u]",
+		  STR_BOOL(cfg.cap_flags & FLAG_CAP_FRAGMENTATION),
+		  STR_BOOL(cfg.cap_flags & FLAG_CAP_PIPELINING),
+		  STR_BOOL(cfg.cap_flags & FLAG_CAP_ASYNC),
+		  STR_BOOL(cfg.debug_level),
+		  cfg.max_frame_size);
 
 	(void)ev_run(ev_base, 0);
 
-	for (i = 0; i < cfg.num_workers; i++) {
+	for (i = 0; i < cfg.num_workers; i++)
+	{
 		struct worker *w = prg.workers + i;
 
 		rc = pthread_join(w->thread, NULL);

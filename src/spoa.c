@@ -19,7 +19,6 @@
  */
 #include "include.h"
 
-
 /***
  * NAME
  *   acc_payload -
@@ -36,22 +35,26 @@
 int acc_payload(struct spoe_frame *frame)
 {
 	size_t len = frame->len - frame->offset;
-	int    retval = frame->offset;
+	int retval = frame->offset;
 
 	DBG_FUNC(FW_PTR, "%p", frame);
 
-	if (!frame->fragmented) {
+	if (!frame->fragmented)
+	{
 		/* No need to accumulation payload. */
 	}
-	else if (_ERROR(buffer_grow(&(frame->frag), frame->buf + frame->offset, len))) {
+	else if (_ERROR(buffer_grow(&(frame->frag), frame->buf + frame->offset, len)))
+	{
 		FC_PTR->status_code = SPOE_FRM_ERR_RES;
 
 		retval = FUNC_RET_ERROR;
 	}
-	else if (frame->flags & SPOE_FRM_FL_FIN) {
+	else if (frame->flags & SPOE_FRM_FL_FIN)
+	{
 		SPOE_FRAME_BUFFER_SET(frame, (typeof(frame->buf))frame->frag.ptr, 0, frame->frag.len, frame->flags);
 	}
-	else {
+	else
+	{
 		/* Wait for next parts. */
 		SPOE_FRAME_BUFFER_SET(frame, frame->data, 0, 0, 0);
 
@@ -60,7 +63,6 @@ int acc_payload(struct spoe_frame *frame)
 
 	return retval;
 }
-
 
 /***
  * NAME
@@ -84,7 +86,8 @@ static void release_frame(struct spoe_frame *frame)
 	if (_NULL(frame))
 		return;
 
-	if (ev_is_active(&(frame->ev_process_frame)) || ev_is_pending(&(frame->ev_process_frame))) {
+	if (ev_is_active(&(frame->ev_process_frame)) || ev_is_pending(&(frame->ev_process_frame)))
+	{
 		ev_timer_stop(FW_PTR->ev_base, &(frame->ev_process_frame));
 		ev_async_send(FW_PTR->ev_base, &(FW_PTR->ev_async));
 	}
@@ -95,7 +98,6 @@ static void release_frame(struct spoe_frame *frame)
 	(void)memset(frame, 0, sizeof(*frame) + cfg.max_frame_size + SPOA_FRM_LEN);
 	LIST_ADDQ(&(w->frames), &(frame->list));
 }
-
 
 /***
  * NAME
@@ -113,7 +115,7 @@ static void release_frame(struct spoe_frame *frame)
 static void unuse_spoe_engine(struct client *client)
 {
 	struct spoe_engine *engine;
-	struct spoe_frame  *f, *fback;
+	struct spoe_frame *f, *fback;
 
 	DBG_FUNC(CW_PTR, "%p", client);
 
@@ -137,7 +139,6 @@ static void unuse_spoe_engine(struct client *client)
 	PTR_FREE(engine);
 }
 
-
 /***
  * NAME
  *   release_client -
@@ -154,7 +155,7 @@ static void unuse_spoe_engine(struct client *client)
 void release_client(struct client *client)
 {
 	struct spoe_frame *f, *fback;
-	bool_t             flag_ev_async_send = 0;
+	bool_t flag_ev_async_send = 0;
 
 	DBG_FUNC(CW_PTR, "%p", client);
 
@@ -169,11 +170,13 @@ void release_client(struct client *client)
 	unuse_spoe_engine(client);
 	PTR_FREE(client->engine_id);
 
-	if (ev_is_active(&(client->ev_frame_rd)) || ev_is_pending(&(client->ev_frame_rd))) {
+	if (ev_is_active(&(client->ev_frame_rd)) || ev_is_pending(&(client->ev_frame_rd)))
+	{
 		ev_io_stop(CW_PTR->ev_base, &(client->ev_frame_rd));
 		flag_ev_async_send = 1;
 	}
-	if (ev_is_active(&(client->ev_frame_wr)) || ev_is_pending(&(client->ev_frame_wr))) {
+	if (ev_is_active(&(client->ev_frame_wr)) || ev_is_pending(&(client->ev_frame_wr)))
+	{
 		ev_io_stop(CW_PTR->ev_base, &(client->ev_frame_wr));
 		flag_ev_async_send = 1;
 	}
@@ -190,7 +193,6 @@ void release_client(struct client *client)
 	FD_CLOSE(client->fd);
 	PTR_FREE(client);
 }
-
 
 /***
  * NAME
@@ -214,15 +216,14 @@ static void reset_frame(struct spoe_frame *frame)
 
 	buffer_free(&(frame->frag));
 
-	frame->type       = SPOA_FRM_T_UNKNOWN;
-	frame->stream_id  = 0;
-	frame->frame_id   = 0;
-	frame->hcheck     = false;
+	frame->type = SPOA_FRM_T_UNKNOWN;
+	frame->stream_id = 0;
+	frame->frame_id = 0;
+	frame->hcheck = false;
 	frame->fragmented = false;
 	SPOE_FRAME_BUFFER_SET(frame, frame->data, 0, 0, 0);
 	LIST_INIT(&(frame->list));
 }
-
 
 /***
  * NAME
@@ -246,11 +247,12 @@ static void write_frame(struct client *client, struct spoe_frame *frame)
 
 	LIST_DEL(&(frame->list));
 
-	frame->buf    = frame->data;
+	frame->buf = frame->data;
 	frame->offset = 0;
 	*(uint32_t *)frame->buf = htonl(frame->len);
 
-	if (_nNULL(client)) {
+	if (_nNULL(client))
+	{
 		/* HELLO or DISCONNECT frames. */
 		ev_io_start(CW_PTR->ev_base, &(client->ev_frame_wr));
 
@@ -258,33 +260,42 @@ static void write_frame(struct client *client, struct spoe_frame *frame)
 		 * Try to process the frame as soon as possible, and always
 		 * attach it to the client
 		 */
-		if (client->async || client->pipelining) {
+		if (client->async || client->pipelining)
+		{
 			if (_NULL(client->outgoing_frame))
 				client->outgoing_frame = frame;
 			else
 				LIST_ADD(&(client->outgoing_frames), &(frame->list));
-		} else {
+		}
+		else
+		{
 			client->outgoing_frame = frame;
 			ev_io_stop(CW_PTR->ev_base, &(client->ev_frame_rd));
 		}
 
 		flag_ev_async_send = 1;
-	} else {
+	}
+	else
+	{
 		/* For all other frames. */
-		if (_NULL(FC_PTR)) {
+		if (_NULL(FC_PTR))
+		{
 			/* async mode! */
 			LIST_ADDQ(&(frame->engine->outgoing_frames), &(frame->list));
-			list_for_each_entry(client, &(frame->engine->clients), by_engine) {
+			list_for_each_entry(client, &(frame->engine->clients), by_engine)
+			{
 				ev_io_start(CW_PTR->ev_base, &(client->ev_frame_wr));
 				flag_ev_async_send = 1;
 			}
 		}
-		else if (FC_PTR->pipelining) {
+		else if (FC_PTR->pipelining)
+		{
 			LIST_ADDQ(&(FC_PTR->outgoing_frames), &(frame->list));
 			ev_io_start(FC_PTR->worker->ev_base, &(FC_PTR->ev_frame_wr));
 			flag_ev_async_send = 1;
 		}
-		else {
+		else
+		{
 			FC_PTR->outgoing_frame = frame;
 			ev_io_start(FC_PTR->worker->ev_base, &(FC_PTR->ev_frame_wr));
 			ev_io_stop(FC_PTR->worker->ev_base, &(FC_PTR->ev_frame_rd));
@@ -295,7 +306,6 @@ static void write_frame(struct client *client, struct spoe_frame *frame)
 	if (flag_ev_async_send)
 		ev_async_send(FW_PTR->ev_base, &(FW_PTR->ev_async));
 }
-
 
 /***
  * NAME
@@ -316,23 +326,24 @@ static void process_frame_cb(struct ev_loop *loop __maybe_unused, struct ev_time
 {
 	STRUCT_ADDR(spoe_frame, frame, ev_process_frame);
 	const char *ptr, *str, *end;
-	char       *buf;
-	uint64_t    len;
-	int         rc = FUNC_RET_OK, ip_score = SPOE_MSG_IPREP_UNSET;
+	char *buf;
+	uint64_t len;
+	int rc = FUNC_RET_OK, ip_score = SPOE_MSG_IPREP_UNSET, intervention = SPOE_MSG_MODSECURITY_UNSET;
 
 	DBG_FUNC(FW_PTR, "%p, %p, 0x%08x", loop, ev, revents);
 
 	FW_PTR->nbframes++;
 
 	F_DBG(SPOA, frame,
-	      "Process frame messages: stream-id=%u - frame-id=%u - length=%zu bytes",
-	      frame->stream_id, frame->frame_id, frame->len - frame->offset);
+		  "Process frame messages: stream-id=%u - frame-id=%u - length=%zu bytes",
+		  frame->stream_id, frame->frame_id, frame->len - frame->offset);
 
 	ptr = frame->buf + frame->offset;
 	end = frame->buf + frame->len;
 
 	/* Loop on messages. */
-	while (_nERROR(rc) && (ptr < end)) {
+	while (_nERROR(rc) && (ptr < end))
+	{
 		/* Decode the message name. */
 		rc = spoe_decode(frame, &ptr, end, SPOE_DEC_STR0, &str, &len, SPOE_DEC_END);
 		if (_ERROR(rc) || _NULL(str))
@@ -340,7 +351,9 @@ static void process_frame_cb(struct ev_loop *loop __maybe_unused, struct ev_time
 
 		F_DBG(SPOA, frame, "Process SPOE Message '%.*s'", (int)len, str);
 
-		if ((len == STR_SIZE(SPOE_MSG_IPREP)) && (memcmp(str, STR_ADDRSIZE(SPOE_MSG_IPREP)) == 0))
+		if ((len == STR_SIZE(SPOE_MSG_MODSECURITY)) && (memcmp(str, STR_ADDRSIZE(SPOE_MSG_MODSECURITY)) == 0))
+			rc = spoa_msg_modsecurity(frame, &ptr, end, &intervention);
+		else if ((len == STR_SIZE(SPOE_MSG_IPREP)) && (memcmp(str, STR_ADDRSIZE(SPOE_MSG_IPREP)) == 0))
 			rc = spoa_msg_iprep(frame, &ptr, end, &ip_score);
 		else if ((len == STR_SIZE(SPOE_MSG_TEST)) && (memcmp(str, STR_ADDRSIZE(SPOE_MSG_TEST)) == 0))
 			rc = spoa_msg_test(frame, &ptr, end);
@@ -354,15 +367,17 @@ static void process_frame_cb(struct ev_loop *loop __maybe_unused, struct ev_time
 	}
 
 	/* Prepare agent ACK frame. */
-	rc  = prepare_agentack(frame);
+	rc = prepare_agentack(frame);
 	buf = frame->buf + rc;
 
 	if (ip_score != SPOE_MSG_IPREP_UNSET)
 		spoa_msg_iprep_action(frame, &buf, ip_score);
 
+	if (intervention != SPOE_MSG_MODSECURITY_UNSET)
+		spoa_msg_iprep_action(frame, &buf, intervention);
+
 	write_frame(NULL, frame);
 }
-
 
 /***
  * NAME
@@ -386,21 +401,25 @@ static struct spoe_frame *acquire_incoming_frame(struct client *client)
 	if (_nNULL(client->incoming_frame))
 		return client->incoming_frame;
 
-	if (LIST_ISEMPTY(&(CW_PTR->frames))) {
-		if (_NULL(frame = calloc(1, sizeof(*frame) + cfg.max_frame_size + SPOA_FRM_LEN))) {
+	if (LIST_ISEMPTY(&(CW_PTR->frames)))
+	{
+		if (_NULL(frame = calloc(1, sizeof(*frame) + cfg.max_frame_size + SPOA_FRM_LEN)))
+		{
 			c_log(client, _E("Failed to allocate new frame: %m"));
 
 			return NULL;
 		}
-	} else {
+	}
+	else
+	{
 		frame = LIST_NEXT(&(CW_PTR->frames), typeof(frame), list);
 		LIST_DEL(&(frame->list));
 	}
 
 	reset_frame(frame);
-	FW_PTR        = CW_PTR;
+	FW_PTR = CW_PTR;
 	frame->engine = client->engine;
-	FC_PTR        = client;
+	FC_PTR = client;
 
 	ev_timer_init(&(frame->ev_process_frame), process_frame_cb, cfg.processing_delay_us / 1e6, 0.0);
 
@@ -408,7 +427,6 @@ static struct spoe_frame *acquire_incoming_frame(struct client *client)
 
 	return frame;
 }
-
 
 /***
  * NAME
@@ -429,15 +447,18 @@ static struct spoe_frame *acquire_outgoing_frame(struct client *client)
 
 	DBG_FUNC(CW_PTR, "%p", client);
 
-	if (_nNULL(client->outgoing_frame)) {
+	if (_nNULL(client->outgoing_frame))
+	{
 		frame = client->outgoing_frame;
 	}
-	else if (!LIST_ISEMPTY(&(client->outgoing_frames))) {
+	else if (!LIST_ISEMPTY(&(client->outgoing_frames)))
+	{
 		frame = LIST_NEXT(&(client->outgoing_frames), typeof(frame), list);
 		LIST_DEL(&(frame->list));
 		client->outgoing_frame = frame;
 	}
-	else if (_nNULL(client->engine) && !LIST_ISEMPTY(&(client->engine->outgoing_frames))) {
+	else if (_nNULL(client->engine) && !LIST_ISEMPTY(&(client->engine->outgoing_frames)))
+	{
 		frame = LIST_NEXT(&(client->engine->outgoing_frames), typeof(frame), list);
 		LIST_DEL(&(frame->list));
 		client->outgoing_frame = frame;
@@ -445,7 +466,6 @@ static struct spoe_frame *acquire_outgoing_frame(struct client *client)
 
 	return frame;
 }
-
 
 /***
  * NAME
@@ -466,20 +486,22 @@ static void process_incoming_frame(struct spoe_frame *frame)
 
 	ev_timer_start(FW_PTR->ev_base, &(frame->ev_process_frame));
 
-	if (FC_PTR->async) {
+	if (FC_PTR->async)
+	{
 		FC_PTR = NULL;
 		LIST_ADDQ(&(frame->engine->processing_frames), &(frame->list));
 	}
-	else if (FC_PTR->pipelining) {
+	else if (FC_PTR->pipelining)
+	{
 		LIST_ADDQ(&(FC_PTR->processing_frames), &(frame->list));
 	}
-	else {
+	else
+	{
 		ev_io_stop(FC_PTR->worker->ev_base, &(FC_PTR->ev_frame_rd));
 	}
 
 	ev_async_send(FW_PTR->ev_base, &(FW_PTR->ev_async));
 }
-
 
 /***
  * NAME
@@ -505,7 +527,8 @@ static ssize_t frame_recv(struct spoe_frame *frame)
 
 	C_DBG(SPOA, FC_PTR, "--> Receiving data");
 
-	if (frame->buf == frame->data) {
+	if (frame->buf == frame->data)
+	{
 		frame->type = SPOA_FRM_T_HAPROXY;
 
 		/*
@@ -513,10 +536,13 @@ static ssize_t frame_recv(struct spoe_frame *frame)
 		 *   frame->buf points on length part (frame->data)
 		 */
 		retval = tcp_recv(frame, SPOA_FRM_LEN, " length");
-		if (retval == SPOA_FRM_LEN) {
-			frame->len  = ntohl(*(uint32_t *)frame->buf);
+		if (retval == SPOA_FRM_LEN)
+		{
+			frame->len = ntohl(*(uint32_t *)frame->buf);
 			frame->buf += SPOA_FRM_LEN;
-		} else {
+		}
+		else
+		{
 			return (retval > 0) ? 0 : retval;
 		}
 	}
@@ -528,13 +554,12 @@ static ssize_t frame_recv(struct spoe_frame *frame)
 	retval = tcp_recv(frame, frame->len, " data");
 	if (retval == (typeof(retval))frame->len)
 		C_DBG(SPOA, FC_PTR, "New frame of %zu bytes received: <%s> <%s>",
-		      frame->len, str_hex(frame->buf, frame->len), str_ctrl(frame->buf, frame->len));
+			  frame->len, str_hex(frame->buf, frame->len), str_ctrl(frame->buf, frame->len));
 	else
 		retval = (retval > 0) ? 0 : retval;
 
 	return retval;
 }
-
 
 /***
  * NAME
@@ -555,21 +580,24 @@ void read_frame_cb(struct ev_loop *loop __maybe_unused, ev_io *ev, int revents _
 {
 	STRUCT_ADDR(client, client, ev_frame_rd);
 	struct spoe_frame *f;
-	ssize_t            n;
+	ssize_t n;
 
 	DBG_FUNC(CW_PTR, "%p, %p, 0x%08x", loop, ev, revents);
 
 	f = acquire_incoming_frame(client);
 	n = frame_recv(f);
-	if (n <= 0) {
+	if (n <= 0)
+	{
 		if (_ERROR(n))
 			release_client(client);
 
 		return;
 	}
 
-	if (client->state == SPOA_ST_CONNECTING) {
-		if (handle_hahello(f) < 0) {
+	if (client->state == SPOA_ST_CONNECTING)
+	{
+		if (handle_hahello(f) < 0)
+		{
 			c_log(client, _E("Failed to decode HELLO frame"));
 
 			goto disconnect;
@@ -579,8 +607,10 @@ void read_frame_cb(struct ev_loop *loop __maybe_unused, ev_io *ev, int revents _
 
 		goto write_frame;
 	}
-	else if (client->state == SPOA_ST_PROCESSING) {
-		if (f->buf[0] == SPOE_FRM_T_HAPROXY_DISCON) {
+	else if (client->state == SPOA_ST_PROCESSING)
+	{
+		if (f->buf[0] == SPOE_FRM_T_HAPROXY_DISCON)
+		{
 			client->state = SPOA_ST_DISCONNECTING;
 
 			goto disconnecting;
@@ -591,23 +621,27 @@ void read_frame_cb(struct ev_loop *loop __maybe_unused, ev_io *ev, int revents _
 		else
 			n = handle_hanotify(f);
 
-		if (n < 0) {
+		if (n < 0)
+		{
 			c_log(client, _E("Failed to decode frame: %s"),
-			      spoe_frm_err_reasons(client->status_code));
+				  spoe_frm_err_reasons(client->status_code));
 
 			goto disconnect;
 		}
-		else if (n == 0) {
+		else if (n == 0)
+		{
 			c_log(client, _W("Ignore invalid/unknown/aborted frame"));
 
 			reset_frame(f);
 
 			return;
 		}
-		else if (n == 1) {
+		else if (n == 1)
+		{
 			return;
 		}
-		else {
+		else
+		{
 			/* Process frame. */
 			process_incoming_frame(f);
 			client->incoming_frame = NULL;
@@ -615,19 +649,21 @@ void read_frame_cb(struct ev_loop *loop __maybe_unused, ev_io *ev, int revents _
 			return;
 		}
 	}
-	else if (client->state == SPOA_ST_DISCONNECTING) {
-	  disconnecting:
+	else if (client->state == SPOA_ST_DISCONNECTING)
+	{
+	disconnecting:
 		if (handle_hadiscon(f) < 0)
 			c_log(client, _E("--> HAPROXY-DISCONNECT Failed to decode frame"));
 		else if (client->status_code != SPOE_FRM_ERR_NONE)
 			c_log(client, _E("--> HAPROXY-DISCONNECT peer closed connection: %s"),
-			      spoe_frm_err_reasons(client->status_code));
+				  spoe_frm_err_reasons(client->status_code));
 	}
 
-  disconnect:
+disconnect:
 	client->state = SPOA_ST_DISCONNECTING;
 
-	if (prepare_agentdicon(f) < 0) {
+	if (prepare_agentdicon(f) < 0)
+	{
 		c_log(client, _E("Failed to encode DISCONNECT frame"));
 
 		release_client(client);
@@ -635,11 +671,10 @@ void read_frame_cb(struct ev_loop *loop __maybe_unused, ev_io *ev, int revents _
 		return;
 	}
 
-  write_frame:
+write_frame:
 	write_frame(client, f);
 	client->incoming_frame = NULL;
 }
-
 
 /***
  * NAME
@@ -663,7 +698,8 @@ static ssize_t frame_send(const struct client *client, struct spoe_frame *frame)
 
 	C_DBG(SPOA, client, "<-- Sending data");
 
-	if (frame->buf == frame->data) {
+	if (frame->buf == frame->data)
+	{
 		/*
 		 * Send the frame length:
 		 *   frame->buf points on length part (frame->data)
@@ -682,13 +718,12 @@ static ssize_t frame_send(const struct client *client, struct spoe_frame *frame)
 	retval = tcp_send(client, frame, frame->len, " data");
 	if (retval == (typeof(retval))frame->len)
 		C_DBG(SPOA, client, "Frame of %zu bytes sent: <%s> <%s>",
-		      frame->len, str_hex(frame->buf, frame->len), str_ctrl(frame->buf, frame->len));
+			  frame->len, str_hex(frame->buf, frame->len), str_ctrl(frame->buf, frame->len));
 	else
 		retval = (retval > 0) ? 0 : retval;
 
 	return retval;
 }
-
 
 /***
  * NAME
@@ -709,11 +744,12 @@ void write_frame_cb(struct ev_loop *loop __maybe_unused, ev_io *ev, int revents 
 {
 	STRUCT_ADDR(client, client, ev_frame_wr);
 	struct spoe_frame *f;
-	int                n;
+	int n;
 
 	DBG_FUNC(CW_PTR, "%p, %p, 0x%08x", loop, ev, revents);
 
-	if (_NULL(f = acquire_outgoing_frame(client))) {
+	if (_NULL(f = acquire_outgoing_frame(client)))
+	{
 		ev_io_stop(CW_PTR->ev_base, &(client->ev_frame_wr));
 		ev_async_send(CW_PTR->ev_base, &(CW_PTR->ev_async));
 
@@ -721,15 +757,18 @@ void write_frame_cb(struct ev_loop *loop __maybe_unused, ev_io *ev, int revents 
 	}
 
 	n = frame_send(client, f);
-	if (n <= 0) {
+	if (n <= 0)
+	{
 		if (_ERROR(n))
 			release_client(client);
 
 		return;
 	}
 
-	if (client->state == SPOA_ST_CONNECTING) {
-		if (f->hcheck) {
+	if (client->state == SPOA_ST_CONNECTING)
+	{
+		if (f->hcheck)
+		{
 			C_DBG(SPOA, client, "Close client after healthcheck");
 
 			release_client(client);
@@ -739,10 +778,12 @@ void write_frame_cb(struct ev_loop *loop __maybe_unused, ev_io *ev, int revents 
 
 		client->state = SPOA_ST_PROCESSING;
 	}
-	else if (client->state == SPOA_ST_PROCESSING) {
+	else if (client->state == SPOA_ST_PROCESSING)
+	{
 		/* Do nothing. */
 	}
-	else if (client->state == SPOA_ST_DISCONNECTING) {
+	else if (client->state == SPOA_ST_DISCONNECTING)
+	{
 		release_client(client);
 
 		return;
@@ -751,7 +792,8 @@ void write_frame_cb(struct ev_loop *loop __maybe_unused, ev_io *ev, int revents 
 	release_frame(f);
 	client->outgoing_frame = NULL;
 
-	if (!client->async && !client->pipelining) {
+	if (!client->async && !client->pipelining)
+	{
 		ev_io_stop(CW_PTR->ev_base, &(client->ev_frame_wr));
 		ev_io_start(CW_PTR->ev_base, &(client->ev_frame_rd));
 		ev_async_send(CW_PTR->ev_base, &(CW_PTR->ev_async));

@@ -19,24 +19,22 @@
  */
 #include "include.h"
 
-
 struct config_data cfg = {
 #ifdef DEBUG
-	.debug_level         = DEFAULT_DEBUG_LEVEL,
+	.debug_level = DEFAULT_DEBUG_LEVEL,
 #endif
-	.max_frame_size      = DEFAULT_MAX_FRAME_SIZE,
-	.num_workers         = DEFAULT_NUM_WORKERS,
-	.server_address      = DEFAULT_SERVER_ADDRESS,
-	.server_port         = DEFAULT_SERVER_PORT,
-	.connection_backlog  = DEFAULT_CONNECTION_BACKLOG,
+	.max_frame_size = DEFAULT_MAX_FRAME_SIZE,
+	.num_workers = DEFAULT_NUM_WORKERS,
+	.server_address = DEFAULT_SERVER_ADDRESS,
+	.server_port = DEFAULT_SERVER_PORT,
+	.connection_backlog = DEFAULT_CONNECTION_BACKLOG,
 	.processing_delay_us = DEFAULT_PROCESSING_DELAY,
 	.monitor_interval_us = DEFAULT_MONITOR_INTERVAL,
-	.runtime_us          = DEFAULT_RUNTIME,
-	.pidfile_fd          = -1,
-	.ev_backend          = EVFLAG_AUTO,
+	.runtime_us = DEFAULT_RUNTIME,
+	.pidfile_fd = -1,
+	.ev_backend = EVFLAG_AUTO,
 };
 struct program_data prg;
-
 
 /***
  * NAME
@@ -58,7 +56,8 @@ static void usage(const char *program_name, bool_t flag_verbose)
 	(void)printf("       %s { -V --version }\n", program_name);
 	(void)printf("       %s { -r --runtime=TIME } [OPTION]...\n\n", program_name);
 
-	if (flag_verbose) {
+	if (flag_verbose)
+	{
 		(void)printf("Options are:\n");
 		(void)printf("  -a, --address=NAME              Specify the address to listen on (default: \"%s\").\n", DEFAULT_SERVER_ADDRESS);
 		(void)printf("  -B, --libev-backend=TYPE        Specify the libev backend type (default: AUTO).\n");
@@ -69,6 +68,7 @@ static void usage(const char *program_name, bool_t flag_verbose)
 		(void)printf("  -d, --debug=LEVEL               Enable and specify the debug mode level (default: %d).\n", DEFAULT_DEBUG_LEVEL);
 #endif
 		(void)printf("  -F, --pidfile=FILE              Specifies a file to write the process-id to.\n");
+		(void)printf("  -f, --rule-file                 Specifies the rules file to be used.\n");
 		(void)printf("  -h, --help                      Show this text.\n");
 		(void)printf("  -i, --monitor-interval=TIME     Set the monitor interval (default: %s).\n", str_delay(DEFAULT_MONITOR_INTERVAL));
 		(void)printf("  -l, --logfile=[MODE:]FILE       Log all messages to logfile (default: stdout/stderr).\n");
@@ -93,11 +93,12 @@ static void usage(const char *program_name, bool_t flag_verbose)
 		(void)printf("in any other unit if the number is suffixed by a unit (us, ms, s, m, h, d).\n\n");
 		(void)printf("Copyright 2018-2020 HAProxy Technologies\n");
 		(void)printf("SPDX-License-Identifier: GPL-2.0-or-later\n\n");
-	} else {
+	}
+	else
+	{
 		(void)printf("For help type: %s -h\n\n", program_name);
 	}
 }
-
 
 /***
  * NAME
@@ -114,11 +115,12 @@ static void usage(const char *program_name, bool_t flag_verbose)
  */
 static int getopt_set_capability(const char *name)
 {
-#define CAP_DEF(a,b)   { #a, b },
-	static const struct {
+#define CAP_DEF(a, b) {#a, b},
+	static const struct
+	{
 		const char *name;
-		uint8_t     flag;
-	} capabilities[] = { CAP_DEFINES };
+		uint8_t flag;
+	} capabilities[] = {CAP_DEFINES};
 #undef CAP_DEF
 	int i, retval = FUNC_RET_OK;
 
@@ -128,9 +130,12 @@ static int getopt_set_capability(const char *name)
 		if (strcasecmp(capabilities[i].name, name) == 0)
 			break;
 
-	if (i < TABLESIZE(capabilities)) {
+	if (i < TABLESIZE(capabilities))
+	{
 		cfg.cap_flags |= capabilities[i].flag;
-	} else {
+	}
+	else
+	{
 		(void)fprintf(stderr, "ERROR: unsupported capability '%s'\n", name);
 
 		retval = FUNC_RET_ERROR;
@@ -138,7 +143,6 @@ static int getopt_set_capability(const char *name)
 
 	return retval;
 }
-
 
 /***
  * NAME
@@ -155,11 +159,12 @@ static int getopt_set_capability(const char *name)
  */
 static int getopt_set_ev_backend(const char *type)
 {
-#define LIBEV_BACKEND_DEF(v,s)   { s, EVBACKEND_##v },
-	static const struct {
+#define LIBEV_BACKEND_DEF(v, s) {s, EVBACKEND_##v},
+	static const struct
+	{
 		const char *str;
-		uint        type;
-	} backends[] = { LIBEV_BACKEND_DEFINES };
+		uint type;
+	} backends[] = {LIBEV_BACKEND_DEFINES};
 #undef LIBEV_BACKEND_DEF
 	int i, retval = FUNC_RET_OK;
 
@@ -169,9 +174,12 @@ static int getopt_set_ev_backend(const char *type)
 		if (strcasecmp(backends[i].str, type) == 0)
 			break;
 
-	if (i < TABLESIZE(backends)) {
+	if (i < TABLESIZE(backends))
+	{
 		cfg.ev_backend |= backends[i].type;
-	} else {
+	}
+	else
+	{
 		(void)fprintf(stderr, "ERROR: invalid libev backend '%s'\n", type);
 
 		retval = FUNC_RET_ERROR;
@@ -179,7 +187,6 @@ static int getopt_set_ev_backend(const char *type)
 
 	return retval;
 }
-
 
 #ifdef DEBUG
 
@@ -202,22 +209,25 @@ static int getopt_set_ev_backend(const char *type)
 static int getopt_set_debug_level(const char *value, uint32_t *debug_level, int val_min, int val_max)
 {
 	int64_t level;
-	int     retval = FUNC_RET_ERROR;
+	int retval = FUNC_RET_ERROR;
 
 	DBG_FUNC(NULL, "\"%s\", %p, %d, %d", value, debug_level, val_min, val_max);
 
 	if (TEST_OR2(NULL, value, debug_level))
 		return retval;
 
-	if (*value == '\0') {
+	if (*value == '\0')
+	{
 		(void)fprintf(stderr, "ERROR: debug level not defined\n");
 	}
-	else if (str_toll(value, NULL, 1, 10, &level, val_min, val_max)) {
+	else if (str_toll(value, NULL, 1, 10, &level, val_min, val_max))
+	{
 		*debug_level = ((level == -1) ? val_max : level) | (1 << DBG_LEVEL_ENABLED);
 
 		retval = FUNC_RET_OK;
 	}
-	else {
+	else
+	{
 		(void)fprintf(stderr, "ERROR: invalid debug level (allowed range [%d, %d]): '%s'\n", val_min, val_max, value);
 	}
 
@@ -225,7 +235,6 @@ static int getopt_set_debug_level(const char *value, uint32_t *debug_level, int 
 }
 
 #endif /* DEBUG */
-
 
 /***
  * NAME
@@ -246,14 +255,15 @@ static int getopt_set_debug_level(const char *value, uint32_t *debug_level, int 
 static int getopt_set_time(const char *delay, uint64_t *time_us, uint64_t val_min, uint64_t val_max)
 {
 	uint64_t delay_us;
-	int      retval = FUNC_RET_ERROR;
+	int retval = FUNC_RET_ERROR;
 
-	DBG_FUNC(NULL, "\"%s\", %p, %"PRIu64", %"PRIu64, delay, time_us, val_min, val_max);
+	DBG_FUNC(NULL, "\"%s\", %p, %" PRIu64 ", %" PRIu64, delay, time_us, val_min, val_max);
 
 	if (TEST_OR2(NULL, delay, time_us))
 		return retval;
 
-	if (*delay != '\0') {
+	if (*delay != '\0')
+	{
 		delay_us = parse_delay_us(delay, val_min, val_max);
 
 		if (errno == ERANGE)
@@ -264,13 +274,14 @@ static int getopt_set_time(const char *delay, uint64_t *time_us, uint64_t val_mi
 			*time_us = delay_us;
 
 		retval = errno ? FUNC_RET_ERROR : FUNC_RET_OK;
-	} else {
+	}
+	else
+	{
 		(void)fprintf(stderr, "ERROR: time not defined\n");
 	}
 
 	return retval;
 }
-
 
 /***
  * NAME
@@ -288,16 +299,17 @@ static int getopt_set_time(const char *delay, uint64_t *time_us, uint64_t val_mi
  */
 static int getopt_set_ports(const char *ports, int *range)
 {
-	char    *endptr = NULL;
-	int64_t  value[2] = { 0, 0 };
-	int      retval = FUNC_RET_ERROR;
+	char *endptr = NULL;
+	int64_t value[2] = {0, 0};
+	int retval = FUNC_RET_ERROR;
 
 	DBG_FUNC(NULL, "\"%s\", %p", ports, range);
 
 	if (TEST_OR2(NULL, ports, range))
 		return retval;
 
-	if (*ports != '\0') {
+	if (*ports != '\0')
+	{
 		if (!str_toll(ports, &endptr, 0, 10, value, 0, 65535))
 			(void)fprintf(stderr, "ERROR: invalid port range: '%s'\n", ports);
 		else if (_NULL(endptr) || (endptr[0] == '\0'))
@@ -310,12 +322,15 @@ static int getopt_set_ports(const char *ports, int *range)
 			(void)fprintf(stderr, "ERROR: invalid port range: '%s'\n", ports);
 		else
 			retval = FUNC_RET_OK;
-	} else {
+	}
+	else
+	{
 		(void)fprintf(stderr, "ERROR: port range is not defined\n");
 	}
 
 	/* If everything is fine, set the port range. */
-	if (_OK(retval)) {
+	if (_OK(retval))
+	{
 		range[0] = value[0];
 		range[1] = (value[1] > 0) ? (value[1] - value[0] + 1) : 1;
 
@@ -324,7 +339,6 @@ static int getopt_set_ports(const char *ports, int *range)
 
 	return retval;
 }
-
 
 /***
  * NAME
@@ -344,37 +358,37 @@ static int getopt_set_ports(const char *ports, int *range)
 int main(int argc, char **argv, char **envp __maybe_unused)
 {
 	static const struct option longopts[] = {
-		{ "address",            required_argument, NULL, 'a' },
-		{ "libev-backend",      required_argument, NULL, 'B' },
-		{ "connection-backlog", required_argument, NULL, 'b' },
-		{ "capability",         required_argument, NULL, 'c' },
-		{ "daemonize",          no_argument,       NULL, 'D' },
-		{ "debug",              required_argument, NULL, 'd' },
-		{ "pidfile",            required_argument, NULL, 'F' },
-		{ "help",               no_argument,       NULL, 'h' },
-		{ "monitor-interval",   required_argument, NULL, 'i' },
-		{ "logfile",            required_argument, NULL, 'l' },
-		{ "max-frame-size",     required_argument, NULL, 'm' },
-		{ "num-workers",        required_argument, NULL, 'n' },
-		{ "port",               required_argument, NULL, 'p' },
-		{ "runtime",            required_argument, NULL, 'r' },
-		{ "processing-delay",   required_argument, NULL, 't' },
+		{"address", required_argument, NULL, 'a'},
+		{"libev-backend", required_argument, NULL, 'B'},
+		{"connection-backlog", required_argument, NULL, 'b'},
+		{"capability", required_argument, NULL, 'c'},
+		{"daemonize", no_argument, NULL, 'D'},
+		{"debug", required_argument, NULL, 'd'},
+		{"rule-file", required_argument, NULL, 'f'},
+		{"pidfile", required_argument, NULL, 'F'},
+		{"help", no_argument, NULL, 'h'},
+		{"monitor-interval", required_argument, NULL, 'i'},
+		{"logfile", required_argument, NULL, 'l'},
+		{"max-frame-size", required_argument, NULL, 'm'},
+		{"num-workers", required_argument, NULL, 'n'},
+		{"port", required_argument, NULL, 'p'},
+		{"runtime", required_argument, NULL, 'r'},
+		{"processing-delay", required_argument, NULL, 't'},
 #ifdef HAVE_LIBCURL
-		{ "mirror-url",         required_argument, NULL, 'u' },
-		{ "mirror-interface",   required_argument, NULL, 'I' },
-		{ "mirror-local-port",  required_argument, NULL, 'P' },
+		{"mirror-url", required_argument, NULL, 'u'},
+		{"mirror-interface", required_argument, NULL, 'I'},
+		{"mirror-local-port", required_argument, NULL, 'P'},
 #endif
-		{ "version",            no_argument,       NULL, 'V' },
-		{ NULL,                 0,                 NULL, 0   }
-	};
-	char        shortopts[TABLESIZE(longopts) * 2 + 1];
-	int         c, longopts_idx = -1, retval = EX_OK;
-	bool_t      flag_error = 0;
+		{"version", no_argument, NULL, 'V'},
+		{NULL, 0, NULL, 0}};
+	char shortopts[TABLESIZE(longopts) * 2 + 1];
+	int c, longopts_idx = -1, retval = EX_OK;
+	bool_t flag_error = 0;
 #ifdef HAVE_LIBCURL
 	const char *mir_url = NULL;
-#  ifdef USE_THREADS
-	CURLcode    rc = CURLE_FAILED_INIT;
-#  endif
+#ifdef USE_THREADS
+	CURLcode rc = CURLE_FAILED_INIT;
+#endif
 #endif
 
 	(void)gettimeofday(&(prg.start_time), NULL);
@@ -385,7 +399,8 @@ int main(int argc, char **argv, char **envp __maybe_unused)
 
 	(void)getopt_shortopts(longopts, shortopts, sizeof(shortopts), 0);
 
-	while ((c = getopt_long(argc, argv, shortopts, longopts, &longopts_idx)) != EOF) {
+	while ((c = getopt_long(argc, argv, shortopts, longopts, &longopts_idx)) != EOF)
+	{
 		if (c == 'a')
 			cfg.server_address = optarg;
 		else if (c == 'B')
@@ -435,24 +450,30 @@ int main(int argc, char **argv, char **envp __maybe_unused)
 			flag_error = 1;
 	}
 
-	if (cfg.opt_flags & FLAG_OPT_HELP) {
+	if (cfg.opt_flags & FLAG_OPT_HELP)
+	{
 		usage(prg.name, 1);
 	}
-	else if (cfg.opt_flags & FLAG_OPT_VERSION) {
+	else if (cfg.opt_flags & FLAG_OPT_VERSION)
+	{
 		(void)printf("\n%s v%s [build %d] by %s, %s\n\n", prg.name, PACKAGE_VERSION, PACKAGE_BUILD, PACKAGE_AUTHOR, __DATE__);
 	}
-	else {
-		if (cfg.runtime_us < 0) {
+	else
+	{
+		if (cfg.runtime_us < 0)
+		{
 			(void)fprintf(stderr, "ERROR: runtime value not set\n");
 			flag_error = 1;
 		}
 
-		if (!IN_RANGE(cfg.num_workers, 1, 1000)) {
+		if (!IN_RANGE(cfg.num_workers, 1, 1000))
+		{
 			(void)fprintf(stderr, "ERROR: invalid number of workers '%d'\n", cfg.num_workers);
 			flag_error = 1;
 		}
 
-		if (!IN_RANGE(cfg.server_port, 1, 65535)) {
+		if (!IN_RANGE(cfg.server_port, 1, 65535))
+		{
 			(void)fprintf(stderr, "ERROR: invalid port '%d'\n", cfg.server_port);
 			flag_error = 1;
 		}
@@ -465,16 +486,18 @@ int main(int argc, char **argv, char **envp __maybe_unused)
 		return flag_error ? EX_USAGE : EX_OK;
 
 #ifdef HAVE_LIBCURL
-	if (_nNULL(mir_url) && _NULL(cfg.mir_url = parse_url(mir_url))) {
+	if (_nNULL(mir_url) && _NULL(cfg.mir_url = parse_url(mir_url)))
+	{
 		(void)fprintf(stderr, "ERROR: Unable to set URL '%s'\n", mir_url);
 		flag_error = 1;
 	}
-#  ifdef USE_THREADS
-	else if ((rc = curl_global_init(CURL_GLOBAL_DEFAULT)) != CURLE_OK) {
+#ifdef USE_THREADS
+	else if ((rc = curl_global_init(CURL_GLOBAL_DEFAULT)) != CURLE_OK)
+	{
 		(void)fprintf(stderr, CURL_STR "Failed to initialize library: %d\n", rc);
 		flag_error = 1;
 	}
-#  endif
+#endif
 #endif
 
 	/* Opening the pidfile. */
@@ -483,7 +506,8 @@ int main(int argc, char **argv, char **envp __maybe_unused)
 			retval = pidfile(cfg.pidfile, &(cfg.pidfile_fd));
 
 	if (!flag_error && (retval == EX_OK))
-		if (_nNULL(cfg.logfile)) {
+		if (_nNULL(cfg.logfile))
+		{
 			retval = logfile(cfg.logfile);
 			cfg.logfile_in_use = _nERROR(retval);
 		}
@@ -501,10 +525,10 @@ int main(int argc, char **argv, char **envp __maybe_unused)
 		retval = worker_run();
 
 #ifdef HAVE_LIBCURL
-#  ifdef USE_THREADS
+#ifdef USE_THREADS
 	if (rc == CURLE_OK)
 		curl_global_cleanup();
-#  endif
+#endif
 
 	PTR_FREE(cfg.mir_url);
 #endif
